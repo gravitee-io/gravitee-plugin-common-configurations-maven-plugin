@@ -1,0 +1,8 @@
+{
+    "title": "Test Schema",
+    "type": "object",
+    "gioExternalDefinitions": {
+        "b": { "type": "string" },
+        "a": { "type": "integer" }
+    }
+}
