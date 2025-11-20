@@ -1,0 +1,7 @@
+{
+    "title": "External Schema",
+    "type": "object",
+    "gioExternalDefinitions": {
+        "d": { "type": "object" }
+    }
+}
