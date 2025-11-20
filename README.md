@@ -1,0 +1,1 @@
+# gravitee-plugin-common-configurations-maven-plugin
