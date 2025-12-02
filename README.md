@@ -134,3 +134,4 @@ Your local schema file must be valid JSON and a JSON object. If the `gioExternal
 - Keep your local schema focused on plugin‑specific fields; offload shared blocks (HTTP, SSL, proxy, etc.) to provider artifacts and import them via this plugin.
 - Narrow `includeArtifacts` to exactly what you need to minimize I/O and avoid accidental imports.
 - Use multiple `includeSchemas` patterns if your providers place schemas in different folders (e.g., `schemas/external/*.json`, `schemas/other-external/*.json`).
+- Add a `.prettierignore` file to your project with a `target/` entry to avoid formatting `schema-forms` generated in the `target` folder.
