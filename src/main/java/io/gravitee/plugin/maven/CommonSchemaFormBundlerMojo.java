@@ -60,6 +60,7 @@ import org.codehaus.plexus.util.SelectorUtils;
 public class CommonSchemaFormBundlerMojo extends AbstractMojo {
 
     public static final String EXTERNAL_DEFINITIONS_JSON_FIELD = "gioExternalDefinitions";
+    public static final String PRETTIER_IGNORE = ".prettierignore";
 
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     private MavenProject currentMavenProject;
@@ -121,6 +122,7 @@ public class CommonSchemaFormBundlerMojo extends AbstractMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        checkPrettierIgnoreExistence();
         initializeDefaultIncludeSchemasPattern();
         verifyLocalSchemaFormExistence();
 
@@ -144,6 +146,52 @@ public class CommonSchemaFormBundlerMojo extends AbstractMojo {
         writeMergedSchemaFormFile(localSchemaObjectNode);
 
         getLog().info("Schema merged successfully to " + outputFile.getAbsolutePath());
+    }
+
+    private void checkPrettierIgnoreExistence() {
+        File basedir = currentMavenProject.getBasedir();
+        File prettierIgnoreFile = findPrettierIgnoreFile(basedir);
+
+        if (prettierIgnoreFile == null) {
+            getLog().warn("No .prettierignore file found in project hierarchy (starting from " + basedir + ").");
+            getLog().warn(
+                "It is highly recommended to create a .prettierignore file containing 'target' to prevent Prettier from scanning generated files."
+            );
+            return;
+        }
+
+        try {
+            boolean targetIsIgnored = java.nio.file.Files.lines(prettierIgnoreFile.toPath())
+                .map(String::trim)
+                // Accept "target", "target/", "/target" ou "/target/"
+                .anyMatch(line -> line.equals("target") || line.equals("target/") || line.equals("/target") || line.equals("/target/"));
+
+            if (!targetIsIgnored) {
+                getLog().warn(
+                    "The .prettierignore file at " +
+                        prettierIgnoreFile.getAbsolutePath() +
+                        " does not seem to ignore the 'target' directory."
+                );
+                getLog().warn(
+                    "It is highly recommended to add 'target' to your .prettierignore file to prevent Prettier from scanning generated files."
+                );
+            }
+        } catch (IOException e) {
+            getLog().warn("Could not read .prettierignore file: " + prettierIgnoreFile.getAbsolutePath());
+        }
+    }
+
+    private File findPrettierIgnoreFile(File directory) {
+        File currentDir = directory;
+        while (currentDir != null && currentDir.exists()) {
+            File prettierIgnore = new File(currentDir, PRETTIER_IGNORE);
+            if (prettierIgnore.exists()) {
+                return prettierIgnore;
+            }
+            // Remonter au parent
+            currentDir = currentDir.getParentFile();
+        }
+        return null;
     }
 
     private void verifyLocalSchemaFormExistence() throws MojoExecutionException {
