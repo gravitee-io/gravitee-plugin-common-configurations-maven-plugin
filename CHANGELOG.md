@@ -1,3 +1,10 @@
+# [1.0.0-alpha.3](https://github.com/gravitee-io/gravitee-plugin-common-configurations-maven-plugin/compare/1.0.0-alpha.2...1.0.0-alpha.3) (2025-12-05)
+
+
+### Features
+
+* add 'description' field sanitization ([454cb1f](https://github.com/gravitee-io/gravitee-plugin-common-configurations-maven-plugin/commit/454cb1ff5818d2d0e1e188c4d91f549e6a0749dd))
+
 # [1.0.0-alpha.2](https://github.com/gravitee-io/gravitee-plugin-common-configurations-maven-plugin/compare/1.0.0-alpha.1...1.0.0-alpha.2) (2025-12-02)
 
 

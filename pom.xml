@@ -27,7 +27,7 @@
 
     <groupId>io.gravitee.plugin</groupId>
     <artifactId>gravitee-plugin-common-configurations-maven-plugin</artifactId>
-    <version>1.0.0-alpha.2</version>
+    <version>1.0.0-alpha.3</version>
     <name>Gravitee.io - Plugin - Common Configurations - Maven Plugin</name>
     <packaging>maven-plugin</packaging>
 
