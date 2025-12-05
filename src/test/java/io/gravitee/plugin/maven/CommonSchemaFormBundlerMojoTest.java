@@ -28,13 +28,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.gravitee.plugin.maven.fixtures.TestJarArtifactBuilder;
 import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -54,6 +48,8 @@ public class CommonSchemaFormBundlerMojoTest {
     public static final String LOCAL_PROJECT_SCHEMA_FORM = "/localProject/src/main/resources/schemas/schema-form.json";
     public static final String LOCAL_PROJECT_SCHEMA_FORM_WITHOUT_GIO_DEFINITIONS =
         "/localProject/src/main/resources/schemas/schema-form-without-gio-definitions.json";
+    public static final String LOCAL_PROJECT_SCHEMA_FORM_WITH_DESCRIPTIONS =
+        "/localProject/src/main/resources/schemas/schema-form-with-descriptions.json";
 
     @Test
     void should_not_modify_local_schema_form_when_nothing_import(@TempDir Path tempDir) throws Exception {
@@ -68,7 +64,8 @@ public class CommonSchemaFormBundlerMojoTest {
             Set.of(),
             Set.of(),
             localSchema,
-            outputFile
+            outputFile,
+            SupportedFeatures.builder().build()
         );
 
         // When
@@ -123,7 +120,8 @@ public class CommonSchemaFormBundlerMojoTest {
             Set.of(extGroupId + ":" + extArtifactId),
             Set.of(),
             localSchema,
-            outputFile
+            outputFile,
+            SupportedFeatures.builder().build()
         );
 
         mojo.execute();
@@ -199,7 +197,8 @@ public class CommonSchemaFormBundlerMojoTest {
             Set.of(extGroupId + ":" + extArtifactId, extGroupId + ":" + otherExtArtifactId),
             Set.of(),
             localSchema,
-            outputFile
+            outputFile,
+            SupportedFeatures.builder().build()
         );
 
         mojo.execute();
@@ -266,7 +265,8 @@ public class CommonSchemaFormBundlerMojoTest {
             Set.of(extGroupId + ":" + extArtifactId),
             Set.of("schemas/external/*c-key.json"),
             localSchema,
-            outputFile
+            outputFile,
+            SupportedFeatures.builder().build()
         );
 
         mojo.execute();
@@ -325,7 +325,8 @@ public class CommonSchemaFormBundlerMojoTest {
             Set.of(extGroupId + ":" + extArtifactId),
             Set.of(),
             localSchema,
-            outputFile
+            outputFile,
+            SupportedFeatures.builder().build()
         );
 
         mojo.execute();
@@ -378,7 +379,8 @@ public class CommonSchemaFormBundlerMojoTest {
             Set.of(extGroupId + ":" + extArtifactId),
             Set.of(),
             localSchema,
-            outputFile
+            outputFile,
+            SupportedFeatures.builder().build()
         );
 
         mojo.execute();
@@ -419,7 +421,8 @@ public class CommonSchemaFormBundlerMojoTest {
             Set.of("com.acme:bad"),
             Set.of(),
             localSchema,
-            outputFile
+            outputFile,
+            SupportedFeatures.builder().build()
         );
 
         assertThatThrownBy(mojo::execute)
@@ -437,7 +440,8 @@ public class CommonSchemaFormBundlerMojoTest {
             Set.of(),
             Set.of(),
             missingLocal,
-            outputFile
+            outputFile,
+            SupportedFeatures.builder().build()
         );
 
         assertThatThrownBy(mojo::execute)
@@ -466,7 +470,8 @@ public class CommonSchemaFormBundlerMojoTest {
             Set.of("g:ext"),
             Set.of("schemas/external/*.json", "schemas/other-external/*.json"),
             localSchema,
-            outputFile
+            outputFile,
+            SupportedFeatures.builder().build()
         );
 
         mojo.execute();
@@ -483,7 +488,14 @@ public class CommonSchemaFormBundlerMojoTest {
         // no call to .setFile() to force .getFile() to return null
 
         MavenProject project = prepareMavenProject(Set.of(noFile));
-        CommonSchemaFormBundlerMojo mojo = new CommonSchemaFormBundlerMojo(project, Set.of("g:nf"), Set.of(), localSchema, outputFile);
+        CommonSchemaFormBundlerMojo mojo = new CommonSchemaFormBundlerMojo(
+            project,
+            Set.of("g:nf"),
+            Set.of(),
+            localSchema,
+            outputFile,
+            SupportedFeatures.builder().build()
+        );
 
         mojo.execute();
         JsonNode defs = extractExternalDefinitionsJsonNode(outputFile);
@@ -504,11 +516,105 @@ public class CommonSchemaFormBundlerMojoTest {
             .buildArtifact();
 
         MavenProject project = prepareMavenProject(Set.of(ext));
-        CommonSchemaFormBundlerMojo mojo = new CommonSchemaFormBundlerMojo(project, Set.of("g:x"), Set.of(), localSchema, outputFile);
+        CommonSchemaFormBundlerMojo mojo = new CommonSchemaFormBundlerMojo(
+            project,
+            Set.of("g:x"),
+            Set.of(),
+            localSchema,
+            outputFile,
+            SupportedFeatures.builder().build()
+        );
 
         mojo.execute();
         JsonNode defs = extractExternalDefinitionsJsonNode(outputFile);
         assertThat(extractJsonKeysInOrder(defs)).containsExactly("a", "b");
+    }
+
+    @Test
+    void should_keep_descriptions_based_on_supported_features_defaults(@TempDir Path tempDir) throws Exception {
+        // Given: local schema with descriptions containing EL / secrets hints
+        File localSchema = loadResourceAsFile(LOCAL_PROJECT_SCHEMA_FORM_WITH_DESCRIPTIONS);
+        File outputFile = prepareOutputSchemaFormFile(tempDir);
+
+        CommonSchemaFormBundlerMojo mojo = new CommonSchemaFormBundlerMojo(
+            prepareMavenProject(Set.of()),
+            Set.of(),
+            Set.of(),
+            localSchema,
+            outputFile,
+            SupportedFeatures.builder().build()
+        );
+
+        // When
+        mojo.execute();
+
+        // Then
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(outputFile);
+        JsonNode props = root.get("properties");
+        assertThat(props.get("p1").get("description").asText()).isEqualTo("Some field (Supports EL)");
+        assertThat(props.get("p2").get("description").asText()).isEqualTo("Another (Supports EL and secrets)");
+        assertThat(props.get("p3").get("description").asText()).isEqualTo("All fields support EL and secrets");
+        assertThat(props.get("p4").get("description").asText()).isEqualTo("(Supports EL)");
+        assertThat(props.get("p5").get("description").asText()).isEqualTo("  (Supports EL and secrets)  ");
+        // Also ensure nested properties up to depth 4 keep their descriptions with defaults
+        JsonNode level4 = props
+            .get("nested")
+            .get("properties")
+            .get("level2")
+            .get("properties")
+            .get("level3")
+            .get("properties")
+            .get("level4");
+        assertThat(level4.get("description").asText()).isEqualTo("Nested field (Supports EL)");
+        // And in arrays
+        JsonNode arrayInner = props.get("arr").get("items").get("properties").get("inner");
+        assertThat(arrayInner.get("description").asText()).isEqualTo("All fields support EL and secrets");
+    }
+
+    @Test
+    void should_clean_descriptions_when_features_disabled(@TempDir Path tempDir) throws Exception {
+        // Given
+        File localSchema = loadResourceAsFile(LOCAL_PROJECT_SCHEMA_FORM_WITH_DESCRIPTIONS);
+        File outputFile = prepareOutputSchemaFormFile(tempDir);
+
+        SupportedFeatures features = new SupportedFeatures();
+        features.setExpressionLanguageOnly(false);
+        features.setSecretsAndExpressionLanguage(false);
+        CommonSchemaFormBundlerMojo mojo = new CommonSchemaFormBundlerMojo(
+            prepareMavenProject(Set.of()),
+            Set.of(),
+            Set.of(),
+            localSchema,
+            outputFile,
+            SupportedFeatures.builder().expressionLanguageOnly(false).secretsAndExpressionLanguage(false).build()
+        );
+
+        // When
+        mojo.execute();
+
+        // Then
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(outputFile);
+        JsonNode props = root.get("properties");
+        assertThat(props.get("p1").get("description").asText()).isEqualTo("Some field");
+        assertThat(props.get("p2").get("description").asText()).isEqualTo("Another");
+        assertThat(props.get("p3").has("description")).isFalse();
+        assertThat(props.get("p4").has("description")).isFalse();
+        assertThat(props.get("p5").has("description")).isFalse();
+        // Also ensure nested properties are cleaned when features are disabled
+        JsonNode level4 = props
+            .get("nested")
+            .get("properties")
+            .get("level2")
+            .get("properties")
+            .get("level3")
+            .get("properties")
+            .get("level4");
+        assertThat(level4.get("description").asText()).isEqualTo("Nested field");
+        // And array items are cleaned accordingly
+        JsonNode arrayInner = props.get("arr").get("items").get("properties").get("inner");
+        assertThat(arrayInner.has("description")).isFalse();
     }
 
     private static MavenProject prepareMavenProject(Set<Artifact> artifacts) {

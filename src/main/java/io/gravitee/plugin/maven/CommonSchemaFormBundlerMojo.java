@@ -17,6 +17,7 @@ package io.gravitee.plugin.maven;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.File;
@@ -103,6 +104,13 @@ public class CommonSchemaFormBundlerMojo extends AbstractMojo {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
+    /**
+     * Features supported by the target plugin to tailor description texts.
+     * Defaults to true to preserve current behavior if not configured.
+     */
+    @Parameter
+    private SupportedFeatures supportedFeatures = new SupportedFeatures();
+
     public CommonSchemaFormBundlerMojo() {}
 
     @VisibleForTesting
@@ -111,13 +119,15 @@ public class CommonSchemaFormBundlerMojo extends AbstractMojo {
         Set<String> includeArtifacts,
         Set<String> includeSchemas,
         File localSchemaFile,
-        File outputFile
+        File outputFile,
+        SupportedFeatures supportedFeatures
     ) {
         this.currentMavenProject = currentMavenProject;
         this.includeArtifacts = includeArtifacts;
         this.includeSchemas = includeSchemas;
         this.localSchemaFile = localSchemaFile;
         this.outputFile = outputFile;
+        this.supportedFeatures = supportedFeatures;
     }
 
     @Override
@@ -141,11 +151,75 @@ public class CommonSchemaFormBundlerMojo extends AbstractMojo {
         }
         localSchemaObjectNode.set(EXTERNAL_DEFINITIONS_JSON_FIELD, sortedDefinitions);
 
+        // Post-process descriptions based on supported features configuration
+        sanitizeDescriptions(localSchemaObjectNode);
+
         getLog().debug("Generated schema: " + localSchemaObjectNode.toPrettyString());
 
         writeMergedSchemaFormFile(localSchemaObjectNode);
 
         getLog().info("Schema merged successfully to " + outputFile.getAbsolutePath());
+    }
+
+    /**
+     * Remove misleading description fragments when the target plugin DOES NOT support them.
+     *
+     * Policy:
+     * - If expressionLanguageOnly is false: remove occurrences of "(Supports EL)".
+     * - If secretsAndExpressionLanguage is false: remove occurrences of
+     *   "(Supports EL and secrets)" and "All fields support EL and secrets".
+     * If a description becomes empty after cleanup, remove the description node.
+     */
+    private void sanitizeDescriptions(JsonNode node) {
+        boolean removeEL = supportedFeatures != null && Boolean.FALSE.equals(supportedFeatures.getExpressionLanguageOnly());
+        boolean removeSecrets = supportedFeatures != null && Boolean.FALSE.equals(supportedFeatures.getSecretsAndExpressionLanguage());
+
+        sanitizeNodeRecursively(node, removeEL, removeSecrets);
+    }
+
+    private void sanitizeNodeRecursively(JsonNode node, boolean removeEL, boolean removeSecrets) {
+        if (node == null) {
+            return;
+        }
+        if (node.isObject()) {
+            ObjectNode obj = (ObjectNode) node;
+            // Clean current object's description if present
+            JsonNode descNode = obj.get("description");
+            if (descNode != null && descNode.isTextual()) {
+                String cleaned = cleanDescription(descNode.asText(), removeEL, removeSecrets);
+                if (cleaned.isBlank()) {
+                    obj.remove("description");
+                } else {
+                    obj.put("description", cleaned);
+                }
+            }
+            // Recurse into children
+            obj.fields().forEachRemaining(entry -> sanitizeNodeRecursively(entry.getValue(), removeEL, removeSecrets));
+        } else if (node.isArray()) {
+            ArrayNode arr = (ArrayNode) node;
+            for (JsonNode child : arr) {
+                sanitizeNodeRecursively(child, removeEL, removeSecrets);
+            }
+        }
+    }
+
+    private String cleanDescription(String description, boolean removeEL, boolean removeSecrets) {
+        // If no cleanup requested, return as-is to avoid altering formatting/spaces
+        if (!removeEL && !removeSecrets) {
+            return description;
+        }
+        String result = description;
+        if (removeSecrets) {
+            result = result.replace("(Supports EL and secrets)", "");
+            result = result.replace("All fields support EL and secrets", "");
+        }
+        if (removeEL) {
+            result = result.replace("(Supports EL)", "");
+            result = result.replace("Supports EL", "");
+        }
+        // Collapse multiple spaces and trim
+        result = result.replaceAll("\\s+", " ").trim();
+        return result;
     }
 
     private void checkPrettierIgnoreExistence() {

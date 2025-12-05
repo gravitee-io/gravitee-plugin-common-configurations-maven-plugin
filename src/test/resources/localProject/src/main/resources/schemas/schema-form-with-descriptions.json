@@ -1,0 +1,36 @@
+{
+    "title": "Schema with descriptions",
+    "type": "object",
+    "properties": {
+        "p1": { "type": "string", "description": "Some field (Supports EL)" },
+        "p2": { "type": "string", "description": "Another (Supports EL and secrets)" },
+        "p3": { "type": "string", "description": "All fields support EL and secrets" },
+        "p4": { "type": "string", "description": "(Supports EL)" },
+        "p5": { "type": "string", "description": "  (Supports EL and secrets)  " },
+        "nested": {
+            "type": "object",
+            "properties": {
+                "level2": {
+                    "type": "object",
+                    "properties": {
+                        "level3": {
+                            "type": "object",
+                            "properties": {
+                                "level4": { "type": "string", "description": "Nested field (Supports EL)" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "arr": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "inner": { "type": "string", "description": "All fields support EL and secrets" }
+                }
+            }
+        }
+    }
+}
