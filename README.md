@@ -60,6 +60,32 @@ For instance, the http‑proxy related components reuse common HTTP client and S
   - Default: `${project.build.outputDirectory}/schemas/schema-form.json`.
 
 
+### Optional: sanitize description hints based on supported features
+
+Some schema providers include convenience hints in `description` fields such as `(Supports EL)` or `(Supports EL and secrets)`. Those hints can be misleading if your target plugin does not support Expression Language (EL) and/or secrets.
+
+You can ask the plugin to automatically sanitize such hints after merging by configuring the `supportedFeatures` block. Defaults are `true`, meaning: keep the hints as-is for backward compatibility. Set a value to `false` to remove the related hints.
+
+```xml
+<configuration>
+  ...
+  <supportedFeatures>
+    <!-- Keep/remove hints related to EL only. Default: true (keep) -->
+    <expressionLanguageOnly>true</expressionLanguageOnly>
+    <!-- Keep/remove hints related to EL and secrets. Default: true (keep) -->
+    <secretsAndExpressionLanguage>true</secretsAndExpressionLanguage>
+  </supportedFeatures>
+</configuration>
+```
+
+Cleanup rules when a feature is set to `false`:
+- If `expressionLanguageOnly = false` → remove: `(Supports EL)` and `Supports EL`.
+- If `secretsAndExpressionLanguage = false` → remove: `(Supports EL and secrets)` and `All fields support EL and secrets`.
+- After removals, multiple spaces are collapsed and the text is trimmed. If a `description` becomes empty, the `description` field is removed entirely.
+
+The sanitization is applied recursively to every `description` field across the entire merged JSON (objects and arrays).
+
+
 ## Minimal example
 
 Add the plugin to your plugin project (policy/resource/endpoint):
