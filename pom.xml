@@ -33,7 +33,7 @@
 
     <properties>
         <gravitee-bom.version>8.3.47</gravitee-bom.version>
-        <maven-plugin-api.version>3.9.6</maven-plugin-api.version>
+        <maven-plugin-api.version>3.9.12</maven-plugin-api.version>
         <maven-plugin-annotations.version>3.11.0</maven-plugin-annotations.version>
         <maven-plugin-plugin.version>3.11.0</maven-plugin-plugin.version>
         <plexus-utils.version>3.5.1</plexus-utils.version>
