@@ -37,7 +37,7 @@
         <maven-plugin-annotations.version>3.11.0</maven-plugin-annotations.version>
         <maven-plugin-plugin.version>3.11.0</maven-plugin-plugin.version>
         <plexus-utils.version>3.5.1</plexus-utils.version>
-        <maven-plugin-testing-harness.version>3.4.0</maven-plugin-testing-harness.version>
+        <maven-plugin-testing-harness.version>3.5.1</maven-plugin-testing-harness.version>
         <maven-compat.version>3.9.12</maven-compat.version>
     </properties>
 
